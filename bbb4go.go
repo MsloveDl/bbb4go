@@ -3,6 +3,11 @@ package bbb4go
 
 import (
 	"crypto/sha1"
+	"encoding/xml"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"net/http"
 	"reflect"
 	"strconv"
 )
@@ -44,28 +49,6 @@ type JoinMeetingParam struct {
 	ClientURL    string // 可选, 试验, 用来显示自动以的客户端名称
 }
 
-/*
-* 将Struct转换为Map格式
-* type demo struct {              key    value
-*     id string        ----\      id     001
-*     name string      ----/      name   名字
-* }
-* 参数: obj, 需要转换的结构体实例
-* 返回: Map类型的结果
- */
-func Struct2Map(obj interface{}) map[string]interface{} {
-	t := reflect.TypeOF(obj)
-	v := reflect.ValueOf(obj)
-
-	var data = make(map[string]interface{})
-
-	for i := 0; i < t.NumField(); i++ {
-		data[t.Filed(i).Name] = v.Field(i).Interface()
-	}
-
-	return data
-}
-
 func CreateMeeting(param CreateMeetingParam) string {
 	strBaseUrl := "http://10.10.1.217" + "api/create?"
 
@@ -84,7 +67,9 @@ func CreateMeeting(param CreateMeetingParam) string {
 	var logoutURL string               // 退出后地址
 	var record string                  // 是否可以录制
 	var duration string                // 会议时长
+	var moderatorOnlyMessage string    // 问候语
 	var allowStartStopRecording string // 是否允许启动/停止录制
+	var voiceBridge string             // 通过Web加入语音会议时的PIN码
 
 	if "" != param.Welcome {
 		welcome = "&welcome=" + param.Welcome
@@ -111,4 +96,74 @@ func CreateMeeting(param CreateMeetingParam) string {
 		allowStartStopRecording = "&allowStartStopRecording=" + "false"
 	}
 
+	if "" != param.ModeratorOnlyMessage {
+		moderatorOnlyMessage = "&moderatorOnlyMessage=" + param.ModeratorOnlyMessage
+	} else {
+		moderatorOnlyMessage = "&moderatorOnlyMessage=" + "我是[" + param.Name_ +
+			"]大家好."
+	}
+
+	if "" != param.VoiceBridge {
+		voiceBridge = "&voiceBridge=" + param.VoiceBridge
+	} else {
+		// 如果VoiceBridge参数为空, 那么我们分配一个随机数给它
+		rand.Seed(9999)
+		nTemp := 70000 + rand.Intn(9999)
+		voiceBridge = "&voiceBridge=" + strconv.Itoa(nTemp)
+	}
+
+	// 合成请求的参数
+	createParam := name + meetingID + attendeePW + moderatorPW + welcome +
+		voiceBridge + logoutURL + record + duration + moderatorOnlyMessage +
+		allowStartStopRecording
+
+	// 2015/11/16
+	// 继续合成携带checksum参数的请求
+}
+
+/*
+* 执行HTTP GET请求, 返回请求结果
+* 参数: url, 携带参数的请求地址
+* 返回: 请求结果, 如果返回ERROR说明请求过程中出错, 详细信息可以查看log
+**/
+func HttpGet(url string) string {
+	response, err := http.Get(url)
+
+	if nil != err {
+		log.Println("HTTP GET ERROR: " + err.Error())
+		return "ERROR"
+	}
+
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+
+	if nil != err {
+		log.Println("HTTP GET ERROR: " + err.Error())
+		return "ERROR"
+	}
+
+	return string(body)
+}
+
+/*
+* 将Struct转换为Map格式
+* type demo struct {              key    value
+*     id string        ----\      id     001
+*     name string      ----/      name   名字
+* }
+* 参数: obj, 需要转换的结构体实例
+* 返回: Map类型的结果
+**/
+func Struct2Map(obj interface{}) map[string]interface{} {
+	t := reflect.TypeOF(obj)
+	v := reflect.ValueOf(obj)
+
+	var data = make(map[string]interface{})
+
+	for i := 0; i < t.NumField(); i++ {
+		data[t.Filed(i).Name] = v.Field(i).Interface()
+	}
+
+	return data
 }
