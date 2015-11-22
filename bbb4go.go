@@ -3,6 +3,7 @@ package bbb4go
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/xml"
 	"io/ioutil"
 	"log"
@@ -10,6 +11,12 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+)
+
+// 全局变量
+const (
+	BaseUrl = "http://10.10.1.217/Bigbluebutton/api/"
+	Salt    = "39a5303a1540134de8348021143b927e" // 公钥
 )
 
 /*
@@ -50,10 +57,9 @@ type JoinMeetingParam struct {
 }
 
 func CreateMeeting(param CreateMeetingParam) string {
-	strBaseUrl := "http://10.10.1.217" + "api/create?"
-
 	// 检查必填参数
-	if "" == param.Name_ || "" = param.MeetingID_ || "" == param.AttendeePW_; "" == param.ModeratorPW {
+	if "" == param.Name_ || "" == param.MeetingID_ ||
+		"" == param.AttendeePW_ || "" == param.ModeratorPW_ {
 		return "PARAM ERROR"
 	}
 
@@ -83,18 +89,13 @@ func CreateMeeting(param CreateMeetingParam) string {
 		record = "&record=" + param.Record
 	}
 
-	if nil != param.Duration {
-		duration = "&duration=" + strconv.Itoa(param.Duration)
-	} else {
-		duration = "&duration=" + "0"
-	}
+	//-----------------------------------------------------------------------------
+	// 这里可能有问题, 未做字段内容校验, 如果有错着重检查
+	duration = "&duration=" + strconv.Itoa(param.Duration)
 
-	if nil != param.AllowStartStopRecording {
-		allowStartStopRecording = "&allowStartStopRecording=" + strconv.
-			FormatBool(param.AllowStartStopRecording)
-	} else {
-		allowStartStopRecording = "&allowStartStopRecording=" + "false"
-	}
+	allowStartStopRecording = "&allowStartStopRecording=" + strconv.
+		FormatBool(param.AllowStartStopRecording)
+	//-----------------------------------------------------------------------------
 
 	if "" != param.ModeratorOnlyMessage {
 		moderatorOnlyMessage = "&moderatorOnlyMessage=" + param.ModeratorOnlyMessage
@@ -117,8 +118,32 @@ func CreateMeeting(param CreateMeetingParam) string {
 		voiceBridge + logoutURL + record + duration + moderatorOnlyMessage +
 		allowStartStopRecording
 
-	// 2015/11/16
-	// 继续合成携带checksum参数的请求
+	checksum := GetChecksum("create", createParam, Salt)
+
+	// 发出请求
+	createResponse := HttpGet(BaseUrl + "create?" + createParam + "&checksum=" +
+		checksum)
+
+	if "ERROR" == createResponse {
+		return createParam
+	}
+
+	// 2015/11/22 解析返回的XML数据
+
+}
+
+/*
+* 根据请求的接口, 参数以及公钥生成密文
+* 参数: method, 请求的接口
+*	   param, 请求携带的参数
+*      salt, 服务器提供的公钥
+* 返回: 加密后的checksum密文
+**/
+func GetChecksum(method string, param string, salt string) string {
+	private := []byte(method + param + salt)
+	ciphertext := sha1.Sum(private)
+
+	return hex.EncodeToString(ciphertext[:])
 }
 
 /*
@@ -156,13 +181,13 @@ func HttpGet(url string) string {
 * 返回: Map类型的结果
 **/
 func Struct2Map(obj interface{}) map[string]interface{} {
-	t := reflect.TypeOF(obj)
+	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
 
 	var data = make(map[string]interface{})
 
 	for i := 0; i < t.NumField(); i++ {
-		data[t.Filed(i).Name] = v.Field(i).Interface()
+		data[t.Field(i).Name] = v.Field(i).Interface()
 	}
 
 	return data
