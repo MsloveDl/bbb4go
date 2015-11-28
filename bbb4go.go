@@ -56,6 +56,30 @@ type JoinMeetingParam struct {
 	ClientURL    string // 可选, 试验, 用来显示自动以的客户端名称
 }
 
+//-----------------------------------------------------------------------------
+// 匹配XML的各结构体
+type response struct {
+	Returncode string  `xml:"returncode"`
+	Meeting    meeting `xml:"meeting"`
+}
+
+type meeting struct {
+	MeetingID            string `xml:"meetingID"`
+	CreateTime           string `xml:"createTime"`
+	AttendeePW           string `xml:"attendeePW"`
+	ModeratorPW          string `xml:"moderatorPW"`
+	HasBeenForciblyEnded string `xml:"hasBeenForciblyEnded"`
+	MessageKey           string `xml:"messageKey"`
+	Message              string `xml:"message"`
+}
+
+//-----------------------------------------------------------------------------
+
+/*
+* 根据传入的建立会议室结构体包含的内容创建会议室
+* 参数: param, 创建会议室的具体条件
+* 返回: 创建成功返回会议室ID, 创建失败返回ERROR及失败内容
+**/
 func CreateMeeting(param CreateMeetingParam) string {
 	// 检查必填参数
 	if "" == param.Name_ || "" == param.MeetingID_ ||
@@ -125,10 +149,29 @@ func CreateMeeting(param CreateMeetingParam) string {
 		checksum)
 
 	if "ERROR" == createResponse {
-		return createParam
+		return "ERROR"
 	}
 
-	// 2015/11/22 解析返回的XML数据
+	// 解析返回的XML结果, 判断是否成功创建会议室
+	xmlResponse := response{}
+	err := xml.Unmarshal([]byte(createResponse), &xmlResponse)
+	if nil != err {
+		log.Println("XML PARSE ERROR: " + err.Error())
+		return "ERROR"
+	}
+
+	if "SUCCESS" == xmlResponse.Returncode {
+		return xmlResponse.Meeting.MeetingID
+	} else {
+		log.Println("CREATE MEETINGROOM FAILD: " + createResponse)
+		return "FAILD"
+	}
+
+	return "ERROR"
+}
+
+// 2015/11/29 完成了CreateMeeting函数, 准备写JoinMeeting函数了
+func JoinMeeting(param JoinMeetingParam) string {
 
 }
 
