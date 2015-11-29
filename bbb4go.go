@@ -170,9 +170,57 @@ func CreateMeeting(param CreateMeetingParam) string {
 	return "ERROR"
 }
 
-// 2015/11/29 完成了CreateMeeting函数, 准备写JoinMeeting函数了
-func JoinMeeting(param JoinMeetingParam) string {
+/*
+* 根据传入的参数获得要加入的会议室的地址, 获取的地址可以直接进入到会议室当中
+* 参数: param, 加入会议室的具体条件
+* 返回: 加入指定会议室的URL
+**/
+func GetJoinURL(param JoinMeetingParam) string {
+	if "" == param.FullName_ || "" == param.MeetingID_ ||
+		"" == param.Password_ {
+		return "PARAM ERROR"
+	}
 
+	// 构造必填参数
+	fullName := "fullName=" + param.FullName_     // 用户名
+	meetingID := "&meetingID=" + param.MeetingID_ // 试图加入的会议ID
+	password := "&password=" + param.Password_    // 会议室密码, 这里特指与会者密码, 如果传入管理员密码则以管理员身份进入
+
+	var createTime string  // 会议室创建时间, 用来匹配MeetingID, 避免同一个参会者多次进入
+	var userID string      // 标识用户身份的ID, 在调用GetMeetingInfo时将返回
+	var configToken string // 有SetConfigXML调用返回的Token
+	var avatarURL string   // 用户头像的URL, 当config.xml中displayAvatar为true时提供
+	var redirect string    // 当HTML5不可用时, 是否重定向到Flash客户端
+	var clientURL string   // 重定向URL
+
+	if "" != param.CreateTime {
+		createTime = "&createTime=" + param.CreateTime
+	}
+
+	if "" != param.UserID {
+		userID = "&userID=" + param.UserID
+	}
+
+	if "" != param.ConfigToken {
+		configToken = "&configToken=" + param.ConfigToken
+	}
+
+	if "" != param.AvatarURL {
+		avatarURL = "&avatarURL=" + param.AvatarURL
+	}
+
+	if "" != param.ClientURL {
+		redirect = "&redirect=true"
+		clientURL = "&clientURL=" + param.ClientURL
+	}
+
+	// 合成请求参数
+	joinParam := fullName + meetingID + password + createTime + userID +
+		configToken + avatarURL + redirect + clientURL
+
+	checksum := GetChecksum("join", joinParam, Salt)
+
+	return BaseUrl + "join?" + joinParam + "&checksum=" + checksum
 }
 
 /*
