@@ -6,6 +6,10 @@ import (
 	"math/rand"
 	"net/url"
 	"strconv"
+
+	"github.com/MsloveDl/bbb4go/command"
+	"github.com/MsloveDl/bbb4go/config"
+	"github.com/MsloveDl/bbb4go/models"
 )
 
 /*******************************************************************************
@@ -28,9 +32,9 @@ type MeetingRoom struct {
 	AutoStartRecording      bool   // 可选, 当第一个用户进入时自动开始录制会议, 默认为false;
 	AllowStartStopRecording bool   // 可选, 是否允许用户启动/停止录制, 默认为true;
 
-	CreateMeetingResponse models.createMeetingResponse // 建立会议室返回信息
-	MeetingInfo           getMeetingInfoResponse       // 会议室的当前信息
-	Participantses        []Participants               // 会议参与者
+	CreateMeetingResponse models.CreateMeetingResponse  // 建立会议室返回信息
+	MeetingInfo           models.GetMeetingInfoResponse // 会议室的当前信息
+	Participantses        []Participants                // 会议参与者
 }
 
 /*******************************************************************************
@@ -101,10 +105,10 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 		voiceBridge + logoutURL + record + duration + moderatorOnlyMessage +
 		allowStartStopRecording
 
-	checksum := GetChecksum("create", createParam, SALT)
+	checksum := command.GetChecksum("create", createParam, config.SALT)
 
 	// 发出请求
-	createResponse := HttpGet(BASE_URL + "create?" + createParam + "&checksum=" +
+	createResponse := command.HttpGet(config.BASE_URL + "create?" + createParam + "&checksum=" +
 		checksum)
 
 	if "ERROR" == createResponse {
@@ -145,9 +149,9 @@ func (meetingRoom *MeetingRoom) IsMeetingRunning() bool {
 	}
 
 	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_)
-	checksum := GetChecksum("isMeetingRunning", createParam, SALT)
+	checksum := command.GetChecksum("isMeetingRunning", createParam, config.SALT)
 
-	createResponse := HttpGet(BASE_URL + "isMeetingRunning?" + createParam +
+	createResponse := command.HttpGet(config.BASE_URL + "isMeetingRunning?" + createParam +
 		"&checksum=" + checksum)
 
 	if "ERROR" == createResponse {
@@ -155,7 +159,7 @@ func (meetingRoom *MeetingRoom) IsMeetingRunning() bool {
 		return false
 	}
 
-	responseXML := isMeetingRunningResponse{}
+	responseXML := models.IsMeetingRunningResponse{}
 	err := xml.Unmarshal([]byte(createResponse), &responseXML)
 
 	if nil != err {
@@ -185,9 +189,9 @@ func (meetingRoom *MeetingRoom) End() bool {
 
 	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_) +
 		"&password=" + url.QueryEscape(meetingRoom.ModeratorPW_)
-	checksum := GetChecksum("end", createParam, SALT)
+	checksum := command.GetChecksum("end", createParam, config.SALT)
 
-	createResponse := HttpGet(BASE_URL + "end?" + createParam + "&checksum=" +
+	createResponse := command.HttpGet(config.BASE_URL + "end?" + createParam + "&checksum=" +
 		checksum)
 
 	if "ERROR" == createResponse {
@@ -195,7 +199,7 @@ func (meetingRoom *MeetingRoom) End() bool {
 		return false
 	}
 
-	responseXML := endResponse{}
+	responseXML := models.EndResponse{}
 	err := xml.Unmarshal([]byte(createResponse), &responseXML)
 
 	if nil != err {
@@ -215,7 +219,7 @@ func (meetingRoom *MeetingRoom) End() bool {
 * 获取会议室的详细信息, 并且刷新会议室实体中会议室详细信息的描述
 * 返回: 会议室详细信息
 *******************************************************************************/
-func (meetingRoom *MeetingRoom) GetMeetingInfo() *getMeetingInfoResponse {
+func (meetingRoom *MeetingRoom) GetMeetingInfo() *models.GetMeetingInfoResponse {
 	if "" == meetingRoom.MeetingID_ || "" == meetingRoom.ModeratorPW_ {
 		log.Println("ERROR: PARAM ERROR.")
 		return nil
@@ -223,9 +227,9 @@ func (meetingRoom *MeetingRoom) GetMeetingInfo() *getMeetingInfoResponse {
 
 	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_) +
 		"&password=" + url.QueryEscape(meetingRoom.ModeratorPW_)
-	checksum := GetChecksum("getMeetingInfo", createParam, SALT)
+	checksum := command.GetChecksum("getMeetingInfo", createParam, config.SALT)
 
-	createResponse := HttpGet(BASE_URL + "getMeetingInfo?" + createParam +
+	createResponse := command.HttpGet(config.BASE_URL + "getMeetingInfo?" + createParam +
 		"&checksum=" + checksum)
 
 	if "ERROR" == createResponse {

@@ -2,7 +2,7 @@ package models
 
 //-----------------------------------------------------------------------------
 // 建立会议室返回XML的数据结构, 即create接口调用的返回值实例
-type createMeetingResponse struct {
+type CreateMeetingResponse struct {
 	Returncode           string `xml:"returncode"`           // 是否成功
 	MeetingID            string `xml:"meetingID"`            // 会议ID
 	CreateTime           string `xml:"createTime"`           // 会议创建时间
@@ -15,14 +15,14 @@ type createMeetingResponse struct {
 
 //-----------------------------------------------------------------------------
 // 检查会议室是否在运行返回XML的数据结构, 即isMeetingRunning接口调用的返回值实例
-type isMeetingRunningResponse struct {
+type IsMeetingRunningResponse struct {
 	ReturnCode string `xml:"returncode"` // 是否成功
 	Running    bool   `xml:"running"`    // 会议室状态
 }
 
 //-----------------------------------------------------------------------------
 // 关闭会议室返回XML的数据结构, 即end接口调用的返回值实例
-type endResponse struct {
+type EndResponse struct {
 	ReturnCode string `xml:"returncode"` // 是否成功
 	MessageKey string `xml:"messageKey"` // 返回消息Key
 	Message    string `xml:"message"`    // 返回消息
@@ -30,7 +30,7 @@ type endResponse struct {
 
 //-----------------------------------------------------------------------------
 // 获取会议信息返回XML的数据结构, 即getMeetingInfo接口调用的返回值实例
-type getMeetingInfoResponse struct {
+type GetMeetingInfoResponse struct {
 	ReturnCode            string    `xml:"returncode"`            // 是否成功
 	MeetingName           string    `xml:"meetingName"`           // 会议名称
 	MeetingID             string    `xml:"meetingID"`             // 会议ID

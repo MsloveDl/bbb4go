@@ -2,6 +2,9 @@ package bbb4go
 
 import (
 	"net/url"
+
+	"github.com/MsloveDl/bbb4go/command"
+	"github.com/MsloveDl/bbb4go/config"
 )
 
 /*******************************************************************************
@@ -71,8 +74,8 @@ func (participants *Participants) GetJoinURL() string {
 	joinParam := fullName + meetingID + password + createTime + userID +
 		configToken + avatarURL + redirect + clientURL
 
-	checksum := GetChecksum("join", joinParam, SALT)
-	joinUrl := BASE_URL + "join?" + joinParam + "&checksum=" + checksum
+	checksum := command.GetChecksum("join", joinParam, config.SALT)
+	joinUrl := config.BASE_URL + "join?" + joinParam + "&checksum=" + checksum
 	participants.JoinURL = joinUrl
 
 	return joinUrl
