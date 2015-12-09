@@ -4,12 +4,13 @@ import (
 	"encoding/xml"
 	"log"
 	"math/rand"
+	"net/url"
 	"strconv"
 )
 
-/*
+/*******************************************************************************
 * 会议室类, 抽象一个会议室模型, 管理整个会议
-**/
+*******************************************************************************/
 type MeetingRoom struct {
 	Name_                   string // 必填, 会议名称;
 	MeetingID_              string // 必填, 会议ID, 必须是唯一的;
@@ -27,14 +28,15 @@ type MeetingRoom struct {
 	AutoStartRecording      bool   // 可选, 当第一个用户进入时自动开始录制会议, 默认为false;
 	AllowStartStopRecording bool   // 可选, 是否允许用户启动/停止录制, 默认为true;
 
-	CreateMeetingResponse createMeetingResponse // 建立会议室返回信息
-	participantses        []Participants        // 会议参与者
+	CreateMeetingResponse models.createMeetingResponse // 建立会议室返回信息
+	MeetingInfo           getMeetingInfoResponse       // 会议室的当前信息
+	Participantses        []Participants               // 会议参与者
 }
 
-/*
+/*******************************************************************************
 * 根据会议室的配置创建会议室, 将返回信息存储在CreateMeetingResponse属性中
 * 返回: 创建成功返回会议室ID, 创建失败返回ERROR及失败内容
-**/
+*******************************************************************************/
 func (meetingRoom *MeetingRoom) CreateMeeting() string {
 	// 检查必填字段
 	if "" == meetingRoom.Name_ || "" == meetingRoom.MeetingID_ ||
@@ -44,10 +46,10 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 	}
 
 	// 根据对象字段构造必填参数
-	name := "name=" + meetingRoom.Name_                       // 会议名称
-	meetingID := "&meetingID=" + meetingRoom.MeetingID_       // 会议ID
-	attendeePW := "&attendeePW=" + meetingRoom.AttendeePW_    // 与会者密码
-	moderatorPW := "&moderatorPW=" + meetingRoom.ModeratorPW_ // 管理员密码
+	name := "name=" + url.QueryEscape(meetingRoom.Name_)                       // 会议名称
+	meetingID := "&meetingID=" + url.QueryEscape(meetingRoom.MeetingID_)       // 会议ID
+	attendeePW := "&attendeePW=" + url.QueryEscape(meetingRoom.AttendeePW_)    // 与会者密码
+	moderatorPW := "&moderatorPW=" + url.QueryEscape(meetingRoom.ModeratorPW_) // 管理员密码
 
 	var welcome string                 // 欢迎语
 	var logoutURL string               // 退出后地址
@@ -58,39 +60,40 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 	var voiceBridge string             // 通过Web加入语音会议时的PIN码
 
 	if "" != meetingRoom.Welcome {
-		welcome = "&welcome=" + meetingRoom.Welcome
+		welcome = "&welcome=" + url.QueryEscape(meetingRoom.Welcome)
 	}
 
 	if "" != meetingRoom.LogoutURL {
-		logoutURL = "&logoutURL=" + meetingRoom.LogoutURL
+		logoutURL = "&logoutURL=" + url.QueryEscape(meetingRoom.LogoutURL)
 	}
 
 	if "" != meetingRoom.Record {
-		record = "&record=" + meetingRoom.Record
+		record = "&record=" + url.QueryEscape(meetingRoom.Record)
 	}
 
 	//-----------------------------------------------------------------------------
 	// 这里可能有问题, 未做字段内容校验, 如果有错着重检查
-	duration = "&duration=" + strconv.Itoa(meetingRoom.Duration)
+	duration = "&duration=" + url.QueryEscape(strconv.Itoa(meetingRoom.Duration))
 
-	allowStartStopRecording = "&allowStartStopRecording=" + strconv.
-		FormatBool(meetingRoom.AllowStartStopRecording)
+	allowStartStopRecording = "&allowStartStopRecording=" +
+		url.QueryEscape(strconv.FormatBool(meetingRoom.AllowStartStopRecording))
 	//-----------------------------------------------------------------------------
 
 	if "" != meetingRoom.ModeratorOnlyMessage {
-		moderatorOnlyMessage = "&moderatorOnlyMessage=" + meetingRoom.ModeratorOnlyMessage
+		moderatorOnlyMessage = "&moderatorOnlyMessage=" +
+			url.QueryEscape(meetingRoom.ModeratorOnlyMessage)
 	} else {
-		moderatorOnlyMessage = "&moderatorOnlyMessage=" + "我是[" + meetingRoom.Name_ +
-			"]大家好."
+		moderatorOnlyMessage = "&moderatorOnlyMessage=" +
+			url.QueryEscape("我是["+meetingRoom.Name_+"]大家好.")
 	}
 
 	if "" != meetingRoom.VoiceBridge {
-		voiceBridge = "&voiceBridge=" + meetingRoom.VoiceBridge
+		voiceBridge = "&voiceBridge=" + url.QueryEscape(meetingRoom.VoiceBridge)
 	} else {
 		// 如果VoiceBridge参数为空, 那么我们分配一个随机数给它
 		rand.Seed(9999)
 		nTemp := 70000 + rand.Intn(9999)
-		voiceBridge = "&voiceBridge=" + strconv.Itoa(nTemp)
+		voiceBridge = "&voiceBridge=" + url.QueryEscape(strconv.Itoa(nTemp))
 	}
 
 	// 合成请求的参数
@@ -110,7 +113,6 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 	}
 
 	// 解析返回的XML结果, 判断是否成功创建会议室
-	meetingRoom.CreateMeetingResponse = createMeetingResponse{}
 	err := xml.Unmarshal([]byte(createResponse),
 		&meetingRoom.CreateMeetingResponse)
 
@@ -121,8 +123,8 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 
 	if "SUCCESS" == meetingRoom.CreateMeetingResponse.Returncode {
 		log.Println("SUCCESS CREATE MEETINGROOM. MEETING ID: " +
-			meetingRoom.CreateMeetingResponse.Meeting.MeetingID)
-		return meetingRoom.CreateMeetingResponse.Meeting.MeetingID
+			meetingRoom.CreateMeetingResponse.MeetingID)
+		return meetingRoom.CreateMeetingResponse.MeetingID
 	} else {
 		log.Println("CREATE MEETINGROOM FAILD: " + createResponse)
 		return "FAILD"
@@ -131,17 +133,18 @@ func (meetingRoom *MeetingRoom) CreateMeeting() string {
 	return "ERROR: UNKONW."
 }
 
-/*
-* 检查当前会议室是否正常运行(开门).
+/*******************************************************************************
+* 检查当前会议室是否正常运行(开门). 当会议室中没有参与者的时候, 该接口调用将认为此会议室
+* 未运行, 返回false
 * 返回: true, 会议室运行正常; false, 会议室不存在
-**/
+*******************************************************************************/
 func (meetingRoom *MeetingRoom) IsMeetingRunning() bool {
 	if "" == meetingRoom.MeetingID_ {
 		log.Println("ERROR: PARAM ERROR.")
 		return false
 	}
 
-	createParam := "meetingID=" + meetingRoom.MeetingID_
+	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_)
 	checksum := GetChecksum("isMeetingRunning", createParam, SALT)
 
 	createResponse := HttpGet(BASE_URL + "isMeetingRunning?" + createParam +
@@ -161,11 +164,86 @@ func (meetingRoom *MeetingRoom) IsMeetingRunning() bool {
 	}
 
 	if "SUCCESS" == responseXML.ReturnCode {
-		log.Println("MEETINGROOM IS RUNNING.")
-		isRunning, _ := strconv.ParseBool(responseXML.Running)
-
-		return isRunning
+		log.Println("CALLED SUCCESS.")
+		return responseXML.Running
 	}
 
 	return false
+}
+
+/*******************************************************************************
+* 注销会议室, 并且将在会议室中的参与者踢出. 该接口服务器做的是不负责任调用, 我们应该在调
+* 用该接口一段时间后进行getMeetingInfo或者isMeetingRunning接口调用, 以对关闭操作进行
+* 验证, 确保已经成功执行
+* 返回: 调用成功返回true, 否则返回false
+*******************************************************************************/
+func (meetingRoom *MeetingRoom) End() bool {
+	if "" == meetingRoom.MeetingID_ || "" == meetingRoom.ModeratorPW_ {
+		log.Println("ERROR: PARAM ERROR.")
+		return false
+	}
+
+	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_) +
+		"&password=" + url.QueryEscape(meetingRoom.ModeratorPW_)
+	checksum := GetChecksum("end", createParam, SALT)
+
+	createResponse := HttpGet(BASE_URL + "end?" + createParam + "&checksum=" +
+		checksum)
+
+	if "ERROR" == createResponse {
+		log.Println("ERROR: HTTP ERROR.")
+		return false
+	}
+
+	responseXML := endResponse{}
+	err := xml.Unmarshal([]byte(createResponse), &responseXML)
+
+	if nil != err {
+		log.Println("XML PARSE ERROR: " + err.Error())
+		return false
+	}
+
+	if "SUCCESS" == responseXML.ReturnCode {
+		log.Println("END MEETING SUCCESS.")
+		return true
+	}
+
+	return false
+}
+
+/*******************************************************************************
+* 获取会议室的详细信息, 并且刷新会议室实体中会议室详细信息的描述
+* 返回: 会议室详细信息
+*******************************************************************************/
+func (meetingRoom *MeetingRoom) GetMeetingInfo() *getMeetingInfoResponse {
+	if "" == meetingRoom.MeetingID_ || "" == meetingRoom.ModeratorPW_ {
+		log.Println("ERROR: PARAM ERROR.")
+		return nil
+	}
+
+	createParam := "meetingID=" + url.QueryEscape(meetingRoom.MeetingID_) +
+		"&password=" + url.QueryEscape(meetingRoom.ModeratorPW_)
+	checksum := GetChecksum("getMeetingInfo", createParam, SALT)
+
+	createResponse := HttpGet(BASE_URL + "getMeetingInfo?" + createParam +
+		"&checksum=" + checksum)
+
+	if "ERROR" == createResponse {
+		log.Println("ERROR: HTTP ERROR.")
+		return nil
+	}
+
+	err := xml.Unmarshal([]byte(createResponse), &meetingRoom.MeetingInfo)
+
+	if nil != err {
+		log.Println("XML PARSE ERROR: " + err.Error())
+		return nil
+	}
+
+	if "SUCCESS" == meetingRoom.MeetingInfo.ReturnCode {
+		log.Println("GET MEETING INFO SUCCESS.")
+		return &meetingRoom.MeetingInfo
+	}
+
+	return nil
 }

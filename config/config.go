@@ -1,4 +1,4 @@
-package bbb4go
+package config
 
 const (
 	BASE_URL = "http://meeting.fankunedu.com/bigbluebutton/api/"
