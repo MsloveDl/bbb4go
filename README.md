@@ -21,7 +21,7 @@ func main() {
 }
 ```
 ##其他
-`github.com/MsloveDl/bbb4go/models package`
-包含了所有的模板类, 即库的基本数据结构
-`github.com/MsloveDl/bbb4go/config package`
+`github.com/MsloveDl/bbb4go/models package` <br>
+包含了所有的模板类, 即库的基本数据结构 <br>
+`github.com/MsloveDl/bbb4go/config package` <br>
 包含了所有配置信息, 如bbb服务器的私钥
